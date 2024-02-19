@@ -35,7 +35,7 @@ func Wrapf(err error, format string, args ...any) error {
 	}
 	var a []any
 	a = append(a, err)
-	return Wrap(fmt.Errorf(format+": %w", err))
+	return Wrap(fmt.Errorf(format+": %w", a))
 }
 
 func Errorf(format string, args ...any) error {

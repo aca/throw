@@ -25,7 +25,7 @@ func main() {
 
 	err := f1()
 	if err != nil {
-		slog.Error(err.Error(), throw.SlogAttr(err))
+		slog.Error("mail fail", throw.SlogAttr(err))
 	}
 
 	slog.Info(fmt.Sprintf("errors.Is(err, os.ErrNotExist): %v", errors.Is(err, os.ErrNotExist)))

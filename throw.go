@@ -13,20 +13,27 @@ import (
 const maxDepth = 32
 
 type ThrowError struct {
-	Err        error
-	Stacktrace []string
+	err        error
+	stacktrace []string
 }
 
 func (m ThrowError) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.Stacktrace)
+	v := struct {
+		Error      string   `json:"error"`
+		Stacktrace []string `json:"stack"`
+	}{
+		Error:      m.err.Error(),
+		Stacktrace: m.stacktrace,
+	}
+	return json.Marshal(v)
 }
 
 func (m ThrowError) Error() string {
-	return m.Err.Error()
+	return m.err.Error()
 }
 
 func (m ThrowError) Unwrap() error {
-	return m.Err
+	return m.err
 }
 
 func Wrapf(err error, format string, args ...any) error {
@@ -43,7 +50,7 @@ func Errorf(format string, args ...any) error {
 }
 
 func SlogAttr(err error) slog.Attr {
-	return slog.Any("stack", Wrap(err))
+	return slog.Any("throw", Wrap(err))
 }
 
 func Wrap(err error) error {
@@ -55,11 +62,11 @@ func Wrap(err error) error {
 
 	// do not re-wrap
 	if errors.As(err, &terr) {
-		terr.Err = err
+		terr.err = err
 		return terr
 	}
 
-	return ThrowError{Err: err, Stacktrace: getStackTrace()}
+	return ThrowError{err: err, stacktrace: getStackTrace()}
 }
 
 func getStackTrace() []string {
@@ -80,6 +87,12 @@ func getStackTrace() []string {
 		}
 
 		if strings.Contains(frame.File, packageName) {
+			if !strings.Contains(frame.File, packageName+"/example") {
+				continue
+			}
+		}
+
+		if strings.Contains(frame.File, "try/try.go") {
 			continue
 		}
 

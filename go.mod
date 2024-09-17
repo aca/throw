@@ -1,3 +1,3 @@
-module github.com/aca/throw
+module github.com/xtdlib/trace
 
 go 1.21

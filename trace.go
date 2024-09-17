@@ -1,4 +1,4 @@
-package throw
+package trace
 
 import (
 	"encoding/json"
@@ -10,14 +10,14 @@ import (
 	"strings"
 )
 
-const maxDepth = 32
+const MaxDepth = 24
 
-type ThrowError struct {
+type TraceError struct {
 	err        error
 	stacktrace []string
 }
 
-func (m ThrowError) MarshalJSON() ([]byte, error) {
+func (m TraceError) MarshalJSON() ([]byte, error) {
 	v := struct {
 		Error      string   `json:"error"`
 		Stacktrace []string `json:"stack"`
@@ -28,21 +28,12 @@ func (m ThrowError) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v)
 }
 
-func (m ThrowError) Error() string {
+func (m TraceError) Error() string {
 	return m.err.Error()
 }
 
-func (m ThrowError) Unwrap() error {
+func (m TraceError) Unwrap() error {
 	return m.err
-}
-
-func Wrapf(err error, format string, args ...any) error {
-	if err == nil {
-		return nil
-	}
-	var a []any
-	a = append(a, err)
-	return Wrap(fmt.Errorf(format+": %w", a))
 }
 
 func Errorf(format string, args ...any) error {
@@ -50,7 +41,7 @@ func Errorf(format string, args ...any) error {
 }
 
 func SlogAttr(err error) slog.Attr {
-	return slog.Any("throw", Wrap(err))
+	return slog.Any("trace", Wrap(err))
 }
 
 func Wrap(err error) error {
@@ -58,7 +49,7 @@ func Wrap(err error) error {
 		return nil
 	}
 
-	var terr ThrowError
+	var terr TraceError
 
 	// do not re-wrap
 	if errors.As(err, &terr) {
@@ -66,15 +57,15 @@ func Wrap(err error) error {
 		return terr
 	}
 
-	return ThrowError{err: err, stacktrace: getStackTrace()}
+	return TraceError{err: err, stacktrace: getStackTrace()}
 }
 
 func getStackTrace() []string {
-	stackBuffer := make([]uintptr, maxDepth)
+	stackBuffer := make([]uintptr, MaxDepth)
 	length := runtime.Callers(3, stackBuffer[:])
 	stack := stackBuffer[:length]
 
-	traceList := make([]string, 0, maxDepth)
+	traceList := make([]string, 0, MaxDepth)
 	frames := runtime.CallersFrames(stack)
 	for {
 		frame, more := frames.Next()
@@ -92,12 +83,11 @@ func getStackTrace() []string {
 			}
 		}
 
-		if strings.Contains(frame.File, "try/try.go") {
+		if strings.HasSuffix(frame.File, "/try/try.go") {
 			continue
 		}
 
 		// TODO: add lib to skip trace
-
 		traceList = append(traceList, fmt.Sprintf("%s:%s:%d", frame.Function, frame.File, frame.Line))
 	}
 	return traceList
@@ -109,3 +99,24 @@ var (
 	goroot      = runtime.GOROOT()
 	packageName = reflect.TypeOf(fake{}).PkgPath()
 )
+
+// Not sure this is useful, just experiment
+func Wrap1[T1 any](v T1, err error) error {
+	return Wrap(err)
+}
+
+func Wrap2[T1, T2 any](_ T1, _ T2, err error) error {
+	return Wrap(err)
+}
+
+func Wrap3[T1, T2, T3 any](_ T1, _ T2, _ T3, err error) error {
+	return Wrap(err)
+}
+
+func Wrap4[T1, T2, T3, T4 any](_ T1, _ T2, _ T3, _ T4, err error) error {
+	return Wrap(err)
+}
+
+func Wrap5[T1, T2, T3, T4, T5 any](_ T1, _ T2, _ T3, _ T4, _ T5, err error) error {
+	return Wrap(err)
+}
